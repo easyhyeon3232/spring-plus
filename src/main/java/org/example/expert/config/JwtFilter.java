@@ -78,9 +78,10 @@ public class JwtFilter extends OncePerRequestFilter {
             Long userId = Long.parseLong(claims.getSubject());
             String email = claims.get("email", String.class);
             UserRole userRole = UserRole.valueOf(claims.get("userRole", String.class));
+            String nickname = claims.get("nickname", String.class);
 
             // Controller에서 @AuthenticationPrincipal로 받을 사용자 정보
-            AuthUser authUser = new AuthUser(userId, email, userRole);
+            AuthUser authUser = new AuthUser(userId, email, userRole, nickname);
 
             // hasRole("ADMIN")은 내부적으로 ROLE_ADMIN 권한을 확인한다. 그래서 ROLE_prefix를 붙여준다.
             List<GrantedAuthority> authorities = List.of(
