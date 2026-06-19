@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>익명 채팅</title>
@@ -7,9 +7,13 @@
 <body>
 <h1>익명 채팅방</h1>
 
+<label for="sender">닉네임</label>
 <input id="sender" placeholder="닉네임">
+
+<label for="message">메시지</label>
 <input id="message" placeholder="메시지">
-<button onclick="sendMessage()">전송</button>
+
+<button type="button" onclick="sendMessage()">전송</button>
 
 <ul id="chat"></ul>
 
