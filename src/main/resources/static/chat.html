@@ -7,42 +7,138 @@
 <body>
 <h1>익명 채팅방</h1>
 
-<label for="sender">닉네임</label>
-<input id="sender" placeholder="닉네임">
+<div>
+    <label for="roomId">채팅방 ID</label>
+    <input id="roomId" type="number" placeholder="채팅방 ID">
+    <button type="button" onclick="connectRoom()">방 입장</button>
+</div>
 
-<label for="message">메시지</label>
-<input id="message" placeholder="메시지">
+<div>
+    <label for="sender">닉네임</label>
+    <input id="sender" type="text" placeholder="닉네임">
+</div>
 
-<button type="button" onclick="sendMessage()">전송</button>
+<div>
+    <label for="message">메시지</label>
+    <input id="message" type="text" placeholder="메시지">
+    <button type="button" onclick="sendMessage()">전송</button>
+</div>
+
+<hr>
 
 <ul id="chat"></ul>
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
 <script>
-    const socket = new SockJS('/ws');
-    const stompClient = Stomp.over(socket);
+    let stompClient = null;
+    let subscription = null;
+    let currentRoomId = null;
 
-    stompClient.connect({}, function () {
-        stompClient.subscribe('/sub/chatroom', function (message) {
-            const body = JSON.parse(message.body);
+    function connectRoom() {
+        const roomIdInput = document.getElementById('roomId');
+        currentRoomId = roomIdInput.value;
 
-            const li = document.createElement('li');
-            li.textContent = body.sender + ': ' + body.message;
-            document.getElementById('chat').appendChild(li);
+        if (!currentRoomId) {
+            alert('채팅방 ID를 입력해주세요.');
+            return;
+        }
+
+        clearChat();
+
+        loadRecentMessages(currentRoomId);
+
+        if (stompClient !== null && stompClient.connected) {
+            subscribeRoom(currentRoomId);
+            return;
+        }
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function () {
+            subscribeRoom(currentRoomId);
         });
-    });
+    }
+
+    function subscribeRoom(roomId) {
+        if (subscription !== null) {
+            subscription.unsubscribe();
+        }
+
+        subscription = stompClient.subscribe('/sub/chat/rooms/' + roomId, function (message) {
+            const body = JSON.parse(message.body);
+            appendMessage(body);
+        });
+    }
+
+    function loadRecentMessages(roomId) {
+        fetch('/chat/rooms/' + roomId + '/messages?page=1&size=30')
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('최근 메시지를 불러오지 못했습니다.');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                const messages = data.content.reverse();
+
+                messages.forEach(function (message) {
+                    appendMessage(message);
+                });
+            })
+            .catch(function (error) {
+                console.error(error);
+                alert('최근 메시지 조회 중 오류가 발생했습니다.');
+            });
+    }
 
     function sendMessage() {
-        const sender = document.getElementById('sender').value;
-        const message = document.getElementById('message').value;
+        if (stompClient === null || !stompClient.connected || currentRoomId === null) {
+            alert('먼저 채팅방에 입장해주세요.');
+            return;
+        }
 
-        stompClient.send('/app/chat.send', {}, JSON.stringify({
+        const senderInput = document.getElementById('sender');
+        const messageInput = document.getElementById('message');
+
+        const sender = senderInput.value;
+        const message = messageInput.value;
+
+        if (!message) {
+            alert('메시지를 입력해주세요.');
+            return;
+        }
+
+        stompClient.send('/app/chat/' + currentRoomId + '/send', {}, JSON.stringify({
             sender: sender,
             message: message
         }));
 
-        document.getElementById('message').value = '';
+        messageInput.value = '';
+    }
+
+    function appendMessage(message) {
+        const chat = document.getElementById('chat');
+
+        const li = document.createElement('li');
+
+        const sentAt = message.sentAt ? message.sentAt.replace('T', ' ') : '';
+        const sender = message.sender ? message.sender : '익명';
+
+        li.textContent = '[' + message.roomId + '번 방] '
+            + sender
+            + ': '
+            + message.message
+            + ' '
+            + sentAt;
+
+        chat.appendChild(li);
+    }
+
+    function clearChat() {
+        document.getElementById('chat').innerHTML = '';
     }
 </script>
 </body>
