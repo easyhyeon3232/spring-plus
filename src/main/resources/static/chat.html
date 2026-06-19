@@ -8,6 +8,12 @@
 <h1>익명 채팅방</h1>
 
 <div>
+    <label for="roomName">채팅방 이름</label>
+    <input id="roomName" type="text" placeholder="채팅방 이름">
+    <button type="button" onclick="createRoom()">채팅방 생성</button>
+</div>
+
+<div>
     <label for="roomId">채팅방 ID</label>
     <input id="roomId" type="number" placeholder="채팅방 ID">
     <button type="button" onclick="connectRoom()">방 입장</button>
@@ -139,6 +145,42 @@
 
     function clearChat() {
         document.getElementById('chat').innerHTML = '';
+    }
+
+    function createRoom() {
+        const roomNameInput = document.getElementById('roomName');
+        const roomName = roomNameInput.value;
+
+        if (!roomName) {
+            alert('채팅방 이름을 입력해주세요.');
+            return;
+        }
+
+        fetch('/chat/rooms', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: roomName
+            })
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('채팅방 생성에 실패했습니다.');
+                }
+                return response.json();
+            })
+            .then(function (room) {
+                document.getElementById('roomId').value = room.roomId;
+                roomNameInput.value = '';
+
+                connectRoom();
+            })
+            .catch(function (error) {
+                console.error(error);
+                alert('채팅방 생성 중 오류가 발생했습니다.');
+            });
     }
 </script>
 </body>
